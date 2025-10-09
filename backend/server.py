@@ -112,6 +112,24 @@ class DailyLogCreate(BaseModel):
     notes: str = ""
     mood: Optional[int] = None
 
+class PlannedSession(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    course_id: str
+    course_title: str
+    planned_date: str  # ISO date string
+    estimated_time: int = 60  # in minutes
+    notes: str = ""
+    is_completed: bool = False
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class PlannedSessionCreate(BaseModel):
+    course_id: str
+    planned_date: str
+    estimated_time: int = 60
+    notes: str = ""
+
 # Root endpoint
 @api_router.get("/")
 async def root():
@@ -282,6 +300,73 @@ async def delete_log(log_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Log not found")
     return {"message": "Log deleted successfully"}
+
+# Planned Sessions endpoints
+@api_router.get("/planned", response_model=List[PlannedSession])
+async def get_planned_sessions(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    course_id: Optional[str] = None
+):
+    """Get all planned sessions with optional filters"""
+    query = {}
+    if start_date and end_date:
+        query['planned_date'] = {'$gte': start_date, '$lte': end_date}
+    elif start_date:
+        query['planned_date'] = {'$gte': start_date}
+    elif end_date:
+        query['planned_date'] = {'$lte': end_date}
+    if course_id:
+        query['course_id'] = course_id
+    
+    sessions = await db.planned_sessions.find(query, {"_id": 0}).sort('planned_date', 1).to_list(1000)
+    return sessions
+
+@api_router.post("/planned", response_model=PlannedSession)
+async def create_planned_session(session_input: PlannedSessionCreate):
+    """Create a planned session"""
+    # Get course title
+    course = await db.courses.find_one({"id": session_input.course_id}, {"_id": 0})
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    session_dict = session_input.model_dump()
+    session_dict['course_title'] = course['title']
+    
+    session = PlannedSession(**session_dict)
+    doc = session.model_dump()
+    
+    await db.planned_sessions.insert_one(doc)
+    return session
+
+@api_router.put("/planned/{session_id}", response_model=PlannedSession)
+async def update_planned_session(session_id: str, estimated_time: Optional[int] = None, notes: Optional[str] = None, is_completed: Optional[bool] = None):
+    """Update a planned session"""
+    existing = await db.planned_sessions.find_one({"id": session_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Planned session not found")
+    
+    update_data = {}
+    if estimated_time is not None:
+        update_data['estimated_time'] = estimated_time
+    if notes is not None:
+        update_data['notes'] = notes
+    if is_completed is not None:
+        update_data['is_completed'] = is_completed
+    
+    if update_data:
+        await db.planned_sessions.update_one({"id": session_id}, {"$set": update_data})
+    
+    updated = await db.planned_sessions.find_one({"id": session_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/planned/{session_id}")
+async def delete_planned_session(session_id: str):
+    """Delete a planned session"""
+    result = await db.planned_sessions.delete_one({"id": session_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Planned session not found")
+    return {"message": "Planned session deleted successfully"}
 
 # Analytics endpoints
 @api_router.get("/analytics/summary")
