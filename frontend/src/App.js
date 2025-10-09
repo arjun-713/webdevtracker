@@ -10,14 +10,13 @@ function App() {
   const [courses, setCourses] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [dailyLogs, setDailyLogs] = useState([]);
+  const [plannedSessions, setPlannedSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPhase, setSelectedPhase] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
-  const [showAddLog, setShowAddLog] = useState(false);
   const [showCourseDetail, setShowCourseDetail] = useState(null);
 
-  // Fetch data on mount
   useEffect(() => {
     initializeApp();
   }, []);
@@ -25,14 +24,12 @@ function App() {
   const initializeApp = async () => {
     try {
       setLoading(true);
-      // Initialize database with course data
       await axios.post(`${API}/init-database`);
-      
-      // Fetch courses and analytics
       await Promise.all([
         fetchCourses(),
         fetchAnalytics(),
-        fetchDailyLogs()
+        fetchDailyLogs(),
+        fetchPlannedSessions()
       ]);
     } catch (error) {
       console.error('Error initializing app:', error);
@@ -65,6 +62,15 @@ function App() {
       setDailyLogs(response.data);
     } catch (error) {
       console.error('Error fetching daily logs:', error);
+    }
+  };
+
+  const fetchPlannedSessions = async () => {
+    try {
+      const response = await axios.get(`${API}/planned`);
+      setPlannedSessions(response.data);
+    } catch (error) {
+      console.error('Error fetching planned sessions:', error);
     }
   };
 
@@ -113,67 +119,34 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-white text-xl">Loading your learning journey...</p>
+      <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ 
+            width: '80px', 
+            height: '80px', 
+            border: '8px solid var(--dark-brown)', 
+            borderTop: '8px solid var(--beige)',
+            borderRadius: '50%',
+            margin: '0 auto 20px'
+          }}></div>
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--dark-brown)', textTransform: 'uppercase' }}>
+            LOADING YOUR JOURNEY...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+    <div style={{ minHeight: '100vh', background: 'var(--cream)' }}>
       {/* Header */}
-      <header className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                  Dev Learning Tracker
-                </h1>
-                <p className="text-sm text-gray-400">Your Full-Stack Journey</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-400">Current Streak</p>
-                <p className="text-2xl font-bold text-orange-500">{analytics?.current_streak || 0} days 🔥</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <BrutalHeader streak={analytics?.current_streak || 0} />
 
-      {/* Navigation Tabs */}
-      <div className="bg-gray-800/30 backdrop-blur-sm border-b border-gray-700">
-        <div className="container mx-auto px-6">
-          <nav className="flex space-x-1">
-            {['dashboard', 'courses', 'daily-tracker', 'completed'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-6 py-3 font-medium capitalize transition-all duration-200 ${
-                  activeTab === tab
-                    ? 'border-b-2 border-blue-500 text-blue-400'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-                }`}
-              >
-                {tab.replace('-', ' ')}
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
+      {/* Navigation */}
+      <BrutalNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
+      <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '30px 20px' }}>
         {activeTab === 'dashboard' && analytics && (
           <Dashboard analytics={analytics} courses={courses} dailyLogs={dailyLogs} />
         )}
@@ -207,6 +180,16 @@ function App() {
           />
         )}
         
+        {activeTab === 'calendar' && (
+          <CalendarView
+            courses={courses}
+            plannedSessions={plannedSessions}
+            dailyLogs={dailyLogs}
+            onSessionAdded={() => fetchPlannedSessions()}
+            onSessionDeleted={() => fetchPlannedSessions()}
+          />
+        )}
+        
         {activeTab === 'completed' && (
           <CompletedCourses courses={courses.filter(c => c.status === 'Completed')} />
         )}
@@ -227,62 +210,108 @@ function App() {
   );
 }
 
+// Brutal Header
+function BrutalHeader({ streak }) {
+  return (
+    <header style={{ 
+      background: 'var(--beige)', 
+      borderBottom: '6px solid var(--dark-brown)',
+      position: 'sticky',
+      top: 0,
+      zIndex: 50
+    }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={{ background: 'var(--dark-brown)', padding: '12px', border: '4px solid var(--dark-brown)' }}>
+              <span style={{ fontSize: '32px' }}>📚</span>
+            </div>
+            <div>
+              <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--dark-brown)', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>
+                DEV TRACKER
+              </h1>
+              <p style={{ fontSize: '14px', color: 'var(--brown)', fontWeight: 'bold', margin: '4px 0 0 0' }}>
+                FULL-STACK LEARNING SYSTEM
+              </p>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '12px', color: 'var(--brown)', fontWeight: 'bold', margin: '0 0 4px 0' }}>CURRENT STREAK</p>
+            <p style={{ fontSize: '36px', fontWeight: 'bold', color: 'var(--dark-brown)', margin: 0 }}>
+              {streak} DAYS 🔥
+            </p>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// Brutal Navigation
+function BrutalNav({ activeTab, setActiveTab }) {
+  return (
+    <div style={{ background: 'var(--white)', borderBottom: '4px solid var(--dark-brown)' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px' }}>
+        <nav style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {['dashboard', 'courses', 'daily-tracker', 'calendar', 'completed'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: '16px 24px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                background: activeTab === tab ? 'var(--dark-brown)' : 'transparent',
+                color: activeTab === tab ? 'var(--cream)' : 'var(--dark-brown)',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'Courier New, monospace',
+                fontSize: '14px',
+                letterSpacing: '1px'
+              }}
+            >
+              {tab.replace('-', ' ')}
+            </button>
+          ))}
+        </nav>
+      </div>
+    </div>
+  );
+}
+
 // Dashboard Component
 function Dashboard({ analytics, courses, dailyLogs }) {
-  const recentLogs = dailyLogs.slice(0, 7);
+  const recentLogs = dailyLogs.slice(0, 5);
   
   return (
-    <div className="space-y-8">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Total Courses" 
-          value={analytics.total_courses}
-          subtitle={`${analytics.completed_courses} completed`}
-          icon="📚"
-          color="blue"
-        />
-        <StatCard 
-          title="In Progress" 
-          value={analytics.in_progress_courses}
-          subtitle="Active learning"
-          icon="🚀"
-          color="purple"
-        />
-        <StatCard 
-          title="Learning Hours" 
-          value={`${Math.round(analytics.total_completed_hours)}h`}
-          subtitle={`of ${Math.round(analytics.total_planned_hours)}h planned`}
-          icon="⏱️"
-          color="green"
-        />
-        <StatCard 
-          title="Completion Rate" 
-          value={`${Math.round((analytics.completed_courses / analytics.total_courses) * 100)}%`}
-          subtitle="Overall progress"
-          icon="🎯"
-          color="orange"
-        />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+        <StatCard title="TOTAL COURSES" value={analytics.total_courses} subtitle={`${analytics.completed_courses} COMPLETED`} />
+        <StatCard title="IN PROGRESS" value={analytics.in_progress_courses} subtitle="ACTIVE LEARNING" />
+        <StatCard title="HOURS" value={`${Math.round(analytics.total_completed_hours)}H`} subtitle={`OF ${Math.round(analytics.total_planned_hours)}H`} />
+        <StatCard title="COMPLETION" value={`${Math.round((analytics.completed_courses / analytics.total_courses) * 100)}%`} subtitle="PROGRESS" />
       </div>
 
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-          <h2 className="text-xl font-bold mb-4 flex items-center">
-            <span className="mr-2">📈</span>
-            Recent Activity
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
+        <div className="brutal-card" style={{ boxShadow: '6px 6px 0px var(--dark-brown)' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', textTransform: 'uppercase' }}>
+            RECENT ACTIVITY
           </h2>
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {recentLogs.length > 0 ? (
               recentLogs.map((log, idx) => (
-                <div key={idx} className="bg-gray-700/50 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm text-gray-400">{new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                    <span className="text-blue-400 font-semibold">{Math.round(log.total_time_spent / 60)}h {log.total_time_spent % 60}m</span>
+                <div key={idx} style={{ background: 'var(--beige)', border: '3px solid var(--dark-brown)', padding: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--brown)' }}>
+                      {new Date(log.date).toLocaleDateString()}
+                    </span>
+                    <span style={{ fontWeight: 'bold' }}>
+                      {Math.floor(log.total_time_spent / 60)}H {log.total_time_spent % 60}M
+                    </span>
                   </div>
-                  <div className="text-sm text-gray-300">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {log.courses.map((c, i) => (
-                      <span key={i} className="inline-block mr-2 mb-1 px-2 py-1 bg-gray-600 rounded text-xs">
+                      <span key={i} className="brutal-badge" style={{ background: 'var(--white)', fontSize: '10px' }}>
                         {c.course_title}
                       </span>
                     ))}
@@ -290,50 +319,44 @@ function Dashboard({ analytics, courses, dailyLogs }) {
                 </div>
               ))
             ) : (
-              <p className="text-gray-400 text-center py-8">No activity yet. Start logging your progress!</p>
+              <p style={{ textAlign: 'center', padding: '40px', fontWeight: 'bold' }}>NO ACTIVITY YET</p>
             )}
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-          <h2 className="text-xl font-bold mb-4 flex items-center">
-            <span className="mr-2">🎓</span>
-            Recently Active Courses
+        <div className="brutal-card" style={{ boxShadow: '6px 6px 0px var(--dark-brown)' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', textTransform: 'uppercase' }}>
+            RECENT COURSES
           </h2>
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {analytics.recent_courses.slice(0, 5).map(course => (
-              <div key={course.id} className="bg-gray-700/50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-sm">{course.title}</h3>
+              <div key={course.id} style={{ background: 'var(--beige)', border: '3px solid var(--dark-brown)', padding: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'start' }}>
+                  <h3 style={{ fontSize: '13px', fontWeight: 'bold', flex: 1, marginRight: '10px' }}>{course.title}</h3>
                   <StatusBadge status={course.status} />
                 </div>
-                <div className="flex items-center justify-between">
-                  <ProgressBar progress={course.progress} size="sm" />
-                  <span className="text-xs text-gray-400 ml-3">{course.progress}%</span>
-                </div>
+                <BrutalProgressBar progress={course.progress} />
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Phase Progress */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-        <h2 className="text-xl font-bold mb-6 flex items-center">
-          <span className="mr-2">📊</span>
-          Phase Progress Overview
+      <div className="brutal-card" style={{ boxShadow: '6px 6px 0px var(--dark-brown)' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', textTransform: 'uppercase' }}>
+          PHASE PROGRESS
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px' }}>
           {[1, 2, 3, 4, 5, 6, 7, 8].map(phase => {
             const phaseCourses = courses.filter(c => c.phase === phase);
             const completed = phaseCourses.filter(c => c.status === 'Completed').length;
             const progress = phaseCourses.length > 0 ? Math.round((completed / phaseCourses.length) * 100) : 0;
             
             return (
-              <div key={phase} className="bg-gray-700/50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-blue-400 mb-1">Phase {phase}</div>
-                <div className="text-xs text-gray-400 mb-3">{completed}/{phaseCourses.length} courses</div>
-                <ProgressBar progress={progress} size="sm" />
+              <div key={phase} style={{ background: 'var(--white)', border: '3px solid var(--dark-brown)', padding: '15px', textAlign: 'center' }}>
+                <div style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>P{phase}</div>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '10px' }}>{completed}/{phaseCourses.length}</div>
+                <BrutalProgressBar progress={progress} />
               </div>
             );
           })}
@@ -343,71 +366,51 @@ function Dashboard({ analytics, courses, dailyLogs }) {
   );
 }
 
-// Courses View Component
+// Courses View
 function CoursesView({ 
-  courses, 
-  getFilteredCourses, 
-  getCoursesByPhase,
-  handleStartCourse, 
-  handleCompleteCourse,
-  setShowCourseDetail,
-  selectedPhase,
-  setSelectedPhase,
-  statusFilter,
-  setStatusFilter,
-  priorityFilter,
-  setPriorityFilter
+  courses, getCoursesByPhase, handleStartCourse, handleCompleteCourse,
+  setShowCourseDetail, selectedPhase, setSelectedPhase,
+  statusFilter, setStatusFilter, priorityFilter, setPriorityFilter
 }) {
-  const filteredCourses = getFilteredCourses();
   const phases = getCoursesByPhase();
 
   return (
-    <div className="space-y-6">
-      {/* Filters */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-        <div className="flex flex-wrap gap-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+      <div className="brutal-card" style={{ boxShadow: '6px 6px 0px var(--dark-brown)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Phase</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>PHASE</label>
             <select 
               value={selectedPhase || ''}
               onChange={(e) => setSelectedPhase(e.target.value ? parseInt(e.target.value) : null)}
-              className="bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
+              style={{ minWidth: '150px' }}
             >
-              <option value="">All Phases</option>
+              <option value="">ALL PHASES</option>
               {Object.keys(phases).map(phase => (
-                <option key={phase} value={phase}>Phase {phase}</option>
+                <option key={phase} value={phase}>PHASE {phase}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Status</label>
-            <select 
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
-            >
-              <option value="all">All Status</option>
-              <option value="Not Started">Not Started</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>STATUS</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ minWidth: '150px' }}>
+              <option value="all">ALL STATUS</option>
+              <option value="Not Started">NOT STARTED</option>
+              <option value="In Progress">IN PROGRESS</option>
+              <option value="Completed">COMPLETED</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Priority</label>
-            <select 
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
-            >
-              <option value="all">All Priorities</option>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>PRIORITY</label>
+            <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} style={{ minWidth: '150px' }}>
+              <option value="all">ALL</option>
               <option value="MUST">MUST</option>
-              <option value="Optional">Optional</option>
+              <option value="Optional">OPTIONAL</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Courses by Phase */}
       {Object.entries(phases).map(([phase, data]) => {
         const phaseCourses = data.courses.filter(c => {
           if (statusFilter !== 'all' && c.status !== statusFilter) return false;
@@ -419,15 +422,16 @@ function CoursesView({
         if (phaseCourses.length === 0) return null;
 
         return (
-          <div key={phase} className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">
-                <span className="text-blue-400">Phase {phase}</span>
-                <span className="text-gray-400 ml-3">- {data.title}</span>
+          <div key={phase} className="brutal-card" style={{ boxShadow: '6px 6px 0px var(--dark-brown)' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                PHASE {phase} - {data.title}
               </h2>
-              <span className="text-sm text-gray-400">{phaseCourses.length} courses</span>
+              <p style={{ fontSize: '14px', color: 'var(--brown)', fontWeight: 'bold', marginTop: '5px' }}>
+                {phaseCourses.length} COURSES
+              </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '15px' }}>
               {phaseCourses.map(course => (
                 <CourseCard 
                   key={course.id}
@@ -445,54 +449,65 @@ function CoursesView({
   );
 }
 
-// Course Card Component
+// Course Card
 function CourseCard({ course, onStart, onComplete, onClick }) {
   return (
-    <div className="bg-gray-700/50 rounded-lg overflow-hidden border border-gray-600 hover:border-blue-500 transition-all duration-200 cursor-pointer group"
-         onClick={onClick}>
-      {/* Thumbnail */}
-      <div className="relative h-40 bg-gray-900 overflow-hidden">
+    <div 
+      onClick={onClick}
+      style={{ 
+        background: 'var(--white)', 
+        border: '4px solid var(--dark-brown)', 
+        cursor: 'pointer',
+        transition: 'transform 0.1s',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.transform = 'translate(-3px, -3px)'}
+      onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(0, 0)'}
+    >
+      <div style={{ position: 'relative', height: '150px', background: 'var(--beige)', borderBottom: '4px solid var(--dark-brown)', overflow: 'hidden' }}>
         <img 
           src={course.thumbnail} 
           alt={course.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           onError={(e) => {
-            e.target.src = `https://via.placeholder.com/400x225/1f2937/60a5fa?text=${encodeURIComponent(course.title.substring(0, 20))}`;
+            e.target.src = `https://via.placeholder.com/400x200/E8DCC4/3E2A1F?text=${encodeURIComponent(course.title.substring(0, 15))}`;
           }}
         />
         <PriorityBadge priority={course.priority} />
       </div>
       
-      {/* Content */}
-      <div className="p-4">
-        <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors">
+      <div style={{ padding: '15px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px', minHeight: '40px' }}>
           {course.title}
         </h3>
         
-        <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
-          <span>⏱️ {course.duration_hours}h</span>
-          <span>Phase {course.phase}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: 'var(--brown)' }}>
+          <span>{course.duration_hours}H</span>
+          <span>PHASE {course.phase}</span>
         </div>
         
-        <ProgressBar progress={course.progress} size="sm" />
+        <BrutalProgressBar progress={course.progress} />
         
-        <div className="flex items-center justify-between mt-3">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
           <StatusBadge status={course.status} />
-          <div className="flex space-x-2">
+          <div style={{ display: 'flex', gap: '8px' }}>
             {course.status === 'Not Started' && (
               <button
                 onClick={(e) => { e.stopPropagation(); onStart(course); }}
-                className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                className="brutalism-button"
+                style={{ padding: '6px 12px', fontSize: '10px' }}
               >
-                Start
+                START
               </button>
             )}
             {course.status === 'In Progress' && (
               <button
                 onClick={(e) => { e.stopPropagation(); onComplete(course); }}
-                className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                className="brutalism-button"
+                style={{ padding: '6px 12px', fontSize: '10px', background: 'var(--brown)', color: 'var(--cream)' }}
               >
-                Complete
+                DONE
               </button>
             )}
           </div>
@@ -502,7 +517,8 @@ function CourseCard({ course, onStart, onComplete, onClick }) {
   );
 }
 
-// Daily Tracker Component
+
+// Daily Tracker
 function DailyTracker({ courses, dailyLogs, onLogAdded }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedCourses, setSelectedCourses] = useState([]);
@@ -519,9 +535,7 @@ function DailyTracker({ courses, dailyLogs, onLogAdded }) {
     
     if (field === 'course_id' && value) {
       const course = courses.find(c => c.id === value);
-      if (course) {
-        updated[index].course_title = course.title;
-      }
+      if (course) updated[index].course_title = course.title;
     }
     
     setSelectedCourses(updated);
@@ -533,13 +547,13 @@ function DailyTracker({ courses, dailyLogs, onLogAdded }) {
 
   const handleSubmit = async () => {
     if (selectedCourses.length === 0) {
-      alert('Please add at least one course');
+      alert('ADD AT LEAST ONE COURSE');
       return;
     }
 
     const validCourses = selectedCourses.filter(c => c.course_id && c.time_spent > 0);
     if (validCourses.length === 0) {
-      alert('Please select courses and add time spent');
+      alert('SELECT COURSES AND ADD TIME');
       return;
     }
 
@@ -551,125 +565,117 @@ function DailyTracker({ courses, dailyLogs, onLogAdded }) {
         mood
       });
       
-      // Reset form
       setSelectedCourses([]);
       setNotes('');
       setMood(null);
       onLogAdded();
-      alert('Daily log saved successfully!');
+      alert('LOG SAVED!');
     } catch (error) {
       console.error('Error saving log:', error);
-      alert('Error saving log. Please try again.');
+      alert('ERROR SAVING LOG');
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Log Form */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-        <h2 className="text-2xl font-bold mb-6 flex items-center">
-          <span className="mr-2">📝</span>
-          Log Today's Progress
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+      <div className="brutal-card" style={{ boxShadow: '6px 6px 0px var(--dark-brown)' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '25px', textTransform: 'uppercase' }}>
+          LOG TODAY'S PROGRESS
         </h2>
         
-        <div className="space-y-4">
-          {/* Date Picker */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Date</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>DATE</label>
             <input 
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               max={new Date().toISOString().split('T')[0]}
-              className="bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none w-full md:w-auto"
+              style={{ width: '100%', maxWidth: '300px' }}
             />
           </div>
 
-          {/* Course Entries */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm text-gray-400">Courses Worked On</label>
-              <button
-                onClick={handleAddCourse}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition-colors"
-              >
-                + Add Course
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>COURSES WORKED ON</label>
+              <button onClick={handleAddCourse} className="brutalism-button" style={{ padding: '8px 16px', fontSize: '12px' }}>
+                + ADD COURSE
               </button>
             </div>
             
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {selectedCourses.map((courseEntry, index) => (
-                <div key={index} className="bg-gray-700/50 rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                    <div className="md:col-span-5">
-                      <select
-                        value={courseEntry.course_id}
-                        onChange={(e) => handleUpdateCourse(index, 'course_id', e.target.value)}
-                        className="bg-gray-600 text-white rounded-lg px-3 py-2 border border-gray-500 focus:border-blue-500 focus:outline-none w-full"
-                      >
-                        <option value="">Select course...</option>
-                        {courses.map(course => (
-                          <option key={course.id} value={course.id}>{course.title}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="md:col-span-2">
-                      <input
-                        type="number"
-                        placeholder="Minutes"
-                        value={courseEntry.time_spent}
-                        onChange={(e) => handleUpdateCourse(index, 'time_spent', parseInt(e.target.value) || 0)}
-                        className="bg-gray-600 text-white rounded-lg px-3 py-2 border border-gray-500 focus:border-blue-500 focus:outline-none w-full"
-                      />
-                    </div>
-                    <div className="md:col-span-4">
-                      <input
-                        type="text"
-                        placeholder="What did you learn?"
-                        value={courseEntry.progress_notes}
-                        onChange={(e) => handleUpdateCourse(index, 'progress_notes', e.target.value)}
-                        className="bg-gray-600 text-white rounded-lg px-3 py-2 border border-gray-500 focus:border-blue-500 focus:outline-none w-full"
-                      />
-                    </div>
-                    <div className="md:col-span-1 flex items-center">
-                      <button
-                        onClick={() => handleRemoveCourse(index)}
-                        className="text-red-400 hover:text-red-300 transition-colors"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
+                <div key={index} style={{ background: 'var(--beige)', border: '3px solid var(--dark-brown)', padding: '15px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr auto', gap: '10px', alignItems: 'center' }}>
+                    <select
+                      value={courseEntry.course_id}
+                      onChange={(e) => handleUpdateCourse(index, 'course_id', e.target.value)}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">SELECT COURSE...</option>
+                      {courses.map(course => (
+                        <option key={course.id} value={course.id}>{course.title}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      placeholder="MINS"
+                      value={courseEntry.time_spent}
+                      onChange={(e) => handleUpdateCourse(index, 'time_spent', parseInt(e.target.value) || 0)}
+                      style={{ width: '100%' }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="WHAT DID YOU LEARN?"
+                      value={courseEntry.progress_notes}
+                      onChange={(e) => handleUpdateCourse(index, 'progress_notes', e.target.value)}
+                      style={{ width: '100%' }}
+                    />
+                    <button
+                      onClick={() => handleRemoveCourse(index)}
+                      style={{ 
+                        background: 'var(--dark-brown)', 
+                        color: 'var(--cream)', 
+                        border: '3px solid var(--dark-brown)', 
+                        padding: '8px 12px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      X
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Notes */}
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Notes</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>NOTES</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any additional notes or reflections..."
+              placeholder="REFLECTIONS..."
               rows={3}
-              className="bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none w-full resize-none"
+              style={{ width: '100%', resize: 'vertical' }}
             />
           </div>
 
-          {/* Mood */}
           <div>
-            <label className="block text-sm text-gray-400 mb-2">How was your learning session?</label>
-            <div className="flex space-x-2">
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>SESSION RATING</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
               {[1, 2, 3, 4, 5].map(rating => (
                 <button
                   key={rating}
                   onClick={() => setMood(rating)}
-                  className={`text-2xl transition-transform hover:scale-110 ${
-                    mood === rating ? 'scale-125' : 'opacity-50'
-                  }`}
+                  style={{
+                    fontSize: '32px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    opacity: mood === rating ? 1 : 0.3,
+                    transition: 'opacity 0.2s'
+                  }}
                 >
                   {rating <= 2 ? '😞' : rating === 3 ? '😐' : rating === 4 ? '🙂' : '😄'}
                 </button>
@@ -677,47 +683,37 @@ function DailyTracker({ courses, dailyLogs, onLogAdded }) {
             </div>
           </div>
 
-          {/* Submit Button */}
-          <button
-            onClick={handleSubmit}
-            className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg font-semibold transition-all duration-200"
-          >
-            Save Daily Log
+          <button onClick={handleSubmit} className="brutalism-button" style={{ padding: '15px', fontSize: '16px', width: '100%' }}>
+            SAVE DAILY LOG
           </button>
         </div>
       </div>
 
-      {/* Recent Logs */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-        <h2 className="text-2xl font-bold mb-6 flex items-center">
-          <span className="mr-2">📚</span>
-          Recent Logs
+      <div className="brutal-card" style={{ boxShadow: '6px 6px 0px var(--dark-brown)' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', textTransform: 'uppercase' }}>
+          RECENT LOGS
         </h2>
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           {dailyLogs.slice(0, 10).map(log => (
-            <div key={log.id} className="bg-gray-700/50 rounded-lg p-4">
-              <div className="flex justify-between items-start mb-3">
+            <div key={log.id} style={{ background: 'var(--beige)', border: '3px solid var(--dark-brown)', padding: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                 <div>
-                  <p className="font-semibold">{new Date(log.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                  <p className="text-sm text-blue-400 mt-1">Total: {Math.floor(log.total_time_spent / 60)}h {log.total_time_spent % 60}m</p>
+                  <p style={{ fontWeight: 'bold', fontSize: '14px' }}>{new Date(log.date).toLocaleDateString()}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--brown)', fontWeight: 'bold', marginTop: '4px' }}>
+                    {Math.floor(log.total_time_spent / 60)}H {log.total_time_spent % 60}M
+                  </p>
                 </div>
-                {log.mood && (
-                  <span className="text-2xl">
-                    {log.mood <= 2 ? '😞' : log.mood === 3 ? '😐' : log.mood === 4 ? '🙂' : '😄'}
-                  </span>
-                )}
+                {log.mood && <span style={{ fontSize: '24px' }}>{log.mood <= 2 ? '😞' : log.mood === 3 ? '😐' : log.mood === 4 ? '🙂' : '😄'}</span>}
               </div>
-              <div className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {log.courses.map((c, i) => (
-                  <div key={i} className="flex justify-between items-center text-sm">
-                    <span className="text-gray-300">{c.course_title}</span>
-                    <span className="text-gray-400">{c.time_spent} min</span>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <span>{c.course_title}</span>
+                    <span style={{ fontWeight: 'bold' }}>{c.time_spent}MIN</span>
                   </div>
                 ))}
               </div>
-              {log.notes && (
-                <p className="mt-3 text-sm text-gray-400 italic">{log.notes}</p>
-              )}
+              {log.notes && <p style={{ marginTop: '12px', fontSize: '12px', fontStyle: 'italic', color: 'var(--brown)' }}>{log.notes}</p>}
             </div>
           ))}
         </div>
@@ -726,70 +722,342 @@ function DailyTracker({ courses, dailyLogs, onLogAdded }) {
   );
 }
 
-// Completed Courses Component
+// Calendar View - NEW FEATURE
+function CalendarView({ courses, plannedSessions, dailyLogs, onSessionAdded, onSessionDeleted }) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [estimatedTime, setEstimatedTime] = useState(60);
+  const [planNotes, setPlanNotes] = useState('');
+
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    return { daysInMonth, startingDayOfWeek };
+  };
+
+  const getActivityForDate = (dateStr) => {
+    const log = dailyLogs.find(l => l.date === dateStr);
+    const planned = plannedSessions.filter(p => p.planned_date === dateStr);
+    return { log, planned };
+  };
+
+  const handleAddSession = async () => {
+    if (!selectedCourse || !selectedDate) {
+      alert('SELECT COURSE AND DATE');
+      return;
+    }
+
+    try {
+      await axios.post(`${BACKEND_URL}/api/planned`, {
+        course_id: selectedCourse,
+        planned_date: selectedDate,
+        estimated_time: estimatedTime,
+        notes: planNotes
+      });
+      
+      setShowAddModal(false);
+      setSelectedCourse('');
+      setEstimatedTime(60);
+      setPlanNotes('');
+      onSessionAdded();
+      alert('SESSION PLANNED!');
+    } catch (error) {
+      console.error('Error adding session:', error);
+      alert('ERROR PLANNING SESSION');
+    }
+  };
+
+  const handleDeleteSession = async (sessionId) => {
+    if (!window.confirm('DELETE THIS PLANNED SESSION?')) return;
+    
+    try {
+      await axios.delete(`${BACKEND_URL}/api/planned/${sessionId}`);
+      onSessionDeleted();
+    } catch (error) {
+      console.error('Error deleting session:', error);
+    }
+  };
+
+  const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
+  const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+      <div className="brutal-card" style={{ boxShadow: '6px 6px 0px var(--dark-brown)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+          <h2 style={{ fontSize: '28px', fontWeight: 'bold', textTransform: 'uppercase' }}>{monthName}</h2>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
+              className="brutalism-button"
+              style={{ padding: '10px 20px' }}
+            >
+              ← PREV
+            </button>
+            <button
+              onClick={() => setCurrentDate(new Date())}
+              className="brutalism-button"
+              style={{ padding: '10px 20px' }}
+            >
+              TODAY
+            </button>
+            <button
+              onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
+              className="brutalism-button"
+              style={{ padding: '10px 20px' }}
+            >
+              NEXT →
+            </button>
+          </div>
+        </div>
+
+        {/* Calendar Grid */}
+        <div style={{ marginBottom: '20px' }}>
+          <div className="calendar-grid">
+            {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
+              <div key={day} style={{ 
+                padding: '10px', 
+                textAlign: 'center', 
+                fontWeight: 'bold', 
+                fontSize: '12px',
+                background: 'var(--dark-brown)',
+                color: 'var(--cream)'
+              }}>
+                {day}
+              </div>
+            ))}
+            
+            {[...Array(startingDayOfWeek)].map((_, i) => (
+              <div key={`empty-${i}`} style={{ background: 'var(--light-beige)', border: '2px solid var(--beige)' }} />
+            ))}
+            
+            {[...Array(daysInMonth)].map((_, i) => {
+              const day = i + 1;
+              const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const { log, planned } = getActivityForDate(dateStr);
+              const isToday = dateStr === new Date().toISOString().split('T')[0];
+              
+              return (
+                <div
+                  key={day}
+                  onClick={() => {
+                    setSelectedDate(dateStr);
+                    setShowAddModal(true);
+                  }}
+                  className={`calendar-day ${log ? 'has-activity' : ''} ${planned.length > 0 ? 'has-planned' : ''} ${isToday ? 'today' : ''}`}
+                >
+                  <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{day}</span>
+                  {log && <span style={{ fontSize: '10px', fontWeight: 'bold' }}>✓</span>}
+                  {planned.length > 0 && <span style={{ fontSize: '10px' }}>📅{planned.length}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', fontSize: '12px', fontWeight: 'bold' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '20px', height: '20px', background: 'var(--brown)', border: '2px solid var(--dark-brown)' }} />
+            COMPLETED
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '20px', height: '20px', background: 'var(--beige)', border: '2px solid var(--dark-brown)' }} />
+            PLANNED
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '20px', height: '20px', background: 'var(--white)', border: '2px solid var(--dark-brown)' }} />
+            AVAILABLE
+          </div>
+        </div>
+      </div>
+
+      {/* Planned Sessions List */}
+      <div className="brutal-card" style={{ boxShadow: '6px 6px 0px var(--dark-brown)' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', textTransform: 'uppercase' }}>
+          UPCOMING PLANNED SESSIONS
+        </h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {plannedSessions
+            .filter(s => s.planned_date >= new Date().toISOString().split('T')[0])
+            .slice(0, 10)
+            .map(session => (
+              <div key={session.id} style={{ background: 'var(--beige)', border: '3px solid var(--dark-brown)', padding: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '6px' }}>{session.course_title}</h3>
+                    <div style={{ display: 'flex', gap: '15px', fontSize: '12px', color: 'var(--brown)', fontWeight: 'bold' }}>
+                      <span>📅 {new Date(session.planned_date).toLocaleDateString()}</span>
+                      <span>⏱ {session.estimated_time} MIN</span>
+                    </div>
+                    {session.notes && <p style={{ marginTop: '8px', fontSize: '12px', fontStyle: 'italic' }}>{session.notes}</p>}
+                  </div>
+                  <button
+                    onClick={() => handleDeleteSession(session.id)}
+                    style={{
+                      background: 'var(--dark-brown)',
+                      color: 'var(--cream)',
+                      border: '3px solid var(--dark-brown)',
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    DELETE
+                  </button>
+                </div>
+              </div>
+            ))}
+          {plannedSessions.filter(s => s.planned_date >= new Date().toISOString().split('T')[0]).length === 0 && (
+            <p style={{ textAlign: 'center', padding: '40px', fontWeight: 'bold' }}>NO PLANNED SESSIONS</p>
+          )}
+        </div>
+      </div>
+
+      {/* Add Session Modal */}
+      {showAddModal && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            background: 'rgba(0,0,0,0.7)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 100,
+            padding: '20px'
+          }}
+          onClick={() => setShowAddModal(false)}
+        >
+          <div 
+            className="brutal-card"
+            style={{ 
+              maxWidth: '500px', 
+              width: '100%',
+              boxShadow: '10px 10px 0px var(--dark-brown)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', textTransform: 'uppercase' }}>
+              PLAN SESSION FOR {new Date(selectedDate).toLocaleDateString()}
+            </h2>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>COURSE</label>
+                <select 
+                  value={selectedCourse}
+                  onChange={(e) => setSelectedCourse(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">SELECT COURSE...</option>
+                  {courses.filter(c => c.status !== 'Completed').map(course => (
+                    <option key={course.id} value={course.id}>{course.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>ESTIMATED TIME (MINUTES)</label>
+                <input
+                  type="number"
+                  value={estimatedTime}
+                  onChange={(e) => setEstimatedTime(parseInt(e.target.value) || 60)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>NOTES</label>
+                <textarea
+                  value={planNotes}
+                  onChange={(e) => setPlanNotes(e.target.value)}
+                  placeholder="WHAT TO FOCUS ON..."
+                  rows={3}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={handleAddSession} className="brutalism-button" style={{ flex: 1, padding: '12px' }}>
+                  ADD SESSION
+                </button>
+                <button 
+                  onClick={() => setShowAddModal(false)} 
+                  className="brutalism-button" 
+                  style={{ flex: 1, padding: '12px', background: 'var(--white)' }}
+                >
+                  CANCEL
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Completed Courses
 function CompletedCourses({ courses }) {
   const totalHours = courses.reduce((sum, c) => sum + c.total_time_spent, 0) / 60;
   const avgHoursPerCourse = courses.length > 0 ? totalHours / courses.length : 0;
 
   return (
-    <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard 
-          title="Completed Courses" 
-          value={courses.length}
-          subtitle="Awesome progress!"
-          icon="🎉"
-          color="green"
-        />
-        <StatCard 
-          title="Total Hours" 
-          value={`${Math.round(totalHours)}h`}
-          subtitle="Time invested"
-          icon="⏰"
-          color="blue"
-        />
-        <StatCard 
-          title="Avg per Course" 
-          value={`${Math.round(avgHoursPerCourse)}h`}
-          subtitle="Learning pace"
-          icon="📊"
-          color="purple"
-        />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+        <StatCard title="COMPLETED" value={courses.length} subtitle="COURSES DONE" />
+        <StatCard title="TOTAL HOURS" value={`${Math.round(totalHours)}H`} subtitle="TIME INVESTED" />
+        <StatCard title="AVG PER COURSE" value={`${Math.round(avgHoursPerCourse)}H`} subtitle="LEARNING PACE" />
       </div>
 
-      {/* Completed Courses Grid */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-        <h2 className="text-2xl font-bold mb-6 flex items-center">
-          <span className="mr-2">🏆</span>
-          Your Achievements
+      <div className="brutal-card" style={{ boxShadow: '6px 6px 0px var(--dark-brown)' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textTransform: 'uppercase' }}>
+          YOUR ACHIEVEMENTS
         </h2>
         {courses.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
             {courses.map(course => (
-              <div key={course.id} className="bg-gray-700/50 rounded-lg overflow-hidden border border-green-500/30">
-                <div className="relative h-32 bg-gray-900">
+              <div key={course.id} style={{ background: 'var(--white)', border: '4px solid var(--dark-brown)' }}>
+                <div style={{ position: 'relative', height: '130px', background: 'var(--beige)', borderBottom: '4px solid var(--dark-brown)' }}>
                   <img 
                     src={course.thumbnail} 
                     alt={course.title}
-                    className="w-full h-full object-cover"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => {
-                      e.target.src = `https://via.placeholder.com/400x200/1f2937/10b981?text=${encodeURIComponent(course.title.substring(0, 20))}`;
+                      e.target.src = `https://via.placeholder.com/400x200/6B4E3D/FFF8E7?text=DONE`;
                     }}
                   />
-                  <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                  <div style={{ 
+                    position: 'absolute', 
+                    top: '10px', 
+                    right: '10px', 
+                    background: 'var(--brown)', 
+                    color: 'var(--cream)', 
+                    padding: '6px 12px',
+                    border: '3px solid var(--dark-brown)',
+                    fontWeight: 'bold',
+                    fontSize: '12px'
+                  }}>
                     ✓ DONE
                   </div>
                 </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-sm mb-2 line-clamp-2">{course.title}</h3>
-                  <div className="flex justify-between text-xs text-gray-400">
-                    <span>Phase {course.phase}</span>
-                    <span>{Math.round(course.total_time_spent / 60)}h spent</span>
+                <div style={{ padding: '15px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>{course.title}</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', color: 'var(--brown)' }}>
+                    <span>PHASE {course.phase}</span>
+                    <span>{Math.round(course.total_time_spent / 60)}H</span>
                   </div>
                   {course.completion_date && (
-                    <p className="text-xs text-green-400 mt-2">
-                      Completed: {new Date(course.completion_date).toLocaleDateString()}
+                    <p style={{ marginTop: '8px', fontSize: '11px', fontWeight: 'bold', color: 'var(--brown)' }}>
+                      {new Date(course.completion_date).toLocaleDateString()}
                     </p>
                   )}
                 </div>
@@ -797,9 +1065,9 @@ function CompletedCourses({ courses }) {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-400 text-lg mb-2">No completed courses yet</p>
-            <p className="text-gray-500 text-sm">Keep learning! Your achievements will appear here.</p>
+          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <p style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>NO COMPLETED COURSES YET</p>
+            <p style={{ fontSize: '14px', color: 'var(--brown)', fontWeight: 'bold' }}>KEEP LEARNING!</p>
           </div>
         )}
       </div>
@@ -817,96 +1085,131 @@ function CourseDetailModal({ course, onClose, onUpdate }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-gray-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-700" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-gray-800 border-b border-gray-700 p-6 flex justify-between items-start">
+    <div 
+      style={{ 
+        position: 'fixed', 
+        inset: 0, 
+        background: 'rgba(0,0,0,0.8)', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        zIndex: 100,
+        padding: '20px'
+      }}
+      onClick={onClose}
+    >
+      <div 
+        className="brutal-card"
+        style={{ 
+          maxWidth: '700px', 
+          width: '100%', 
+          maxHeight: '90vh', 
+          overflow: 'auto',
+          boxShadow: '10px 10px 0px var(--dark-brown)'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '20px' }}>
           <div>
-            <h2 className="text-2xl font-bold mb-2">{course.title}</h2>
-            <p className="text-gray-400">Phase {course.phase} - {course.phase_title}</p>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>
+              {course.title}
+            </h2>
+            <p style={{ fontSize: '14px', color: 'var(--brown)', fontWeight: 'bold' }}>
+              PHASE {course.phase} - {course.phase_title}
+            </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <button 
+            onClick={onClose}
+            style={{
+              background: 'var(--dark-brown)',
+              color: 'var(--cream)',
+              border: '3px solid var(--dark-brown)',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '16px'
+            }}
+          >
+            X
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Video Preview */}
-          <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-            <img 
-              src={course.thumbnail} 
-              alt={course.title}
-              className="w-full h-full object-cover"
+        <div style={{ marginBottom: '20px' }}>
+          <img 
+            src={course.thumbnail} 
+            alt={course.title}
+            style={{ width: '100%', height: '300px', objectFit: 'cover', border: '4px solid var(--dark-brown)' }}
+          />
+        </div>
+
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <a
+            href={course.youtube_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="brutalism-button"
+            style={{ padding: '15px 30px', fontSize: '14px', display: 'inline-block', textDecoration: 'none' }}
+          >
+            ▶ WATCH ON YOUTUBE
+          </a>
+        </div>
+
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+          gap: '12px',
+          marginBottom: '20px'
+        }}>
+          <div style={{ background: 'var(--beige)', border: '3px solid var(--dark-brown)', padding: '12px' }}>
+            <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '4px', color: 'var(--brown)' }}>DURATION</p>
+            <p style={{ fontSize: '18px', fontWeight: 'bold' }}>{course.duration_hours}H</p>
+          </div>
+          <div style={{ background: 'var(--beige)', border: '3px solid var(--dark-brown)', padding: '12px' }}>
+            <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '4px', color: 'var(--brown)' }}>PRIORITY</p>
+            <p style={{ fontSize: '18px', fontWeight: 'bold' }}>{course.priority}</p>
+          </div>
+          <div style={{ background: 'var(--beige)', border: '3px solid var(--dark-brown)', padding: '12px' }}>
+            <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '4px', color: 'var(--brown)' }}>TIME SPENT</p>
+            <p style={{ fontSize: '18px', fontWeight: 'bold' }}>{Math.round(course.total_time_spent / 60)}H</p>
+          </div>
+          <div style={{ background: 'var(--beige)', border: '3px solid var(--dark-brown)', padding: '12px' }}>
+            <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '4px', color: 'var(--brown)' }}>STATUS</p>
+            <StatusBadge status={course.status} />
+          </div>
+        </div>
+
+        {course.description && (
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase' }}>
+              DESCRIPTION
+            </h3>
+            <p style={{ fontSize: '13px', lineHeight: '1.6' }}>{course.description}</p>
+          </div>
+        )}
+
+        <div>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', textTransform: 'uppercase' }}>
+            UPDATE PROGRESS
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '12px' }}>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={progress}
+              onChange={(e) => setProgress(parseInt(e.target.value))}
+              style={{ flex: 1, height: '30px' }}
             />
+            <span style={{ fontSize: '24px', fontWeight: 'bold', minWidth: '60px' }}>{progress}%</span>
           </div>
-
-          <div className="flex justify-center">
-            <a
-              href={course.youtube_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition-colors"
-            >
-              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 3.75a6.25 6.25 0 100 12.5 6.25 6.25 0 000-12.5zM8.75 11.25v-2.5l2.5 1.25-2.5 1.25z" />
-              </svg>
-              Watch on YouTube
-            </a>
-          </div>
-
-          {/* Course Info */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gray-700/50 rounded-lg p-3">
-              <p className="text-xs text-gray-400 mb-1">Duration</p>
-              <p className="font-semibold">{course.duration_hours}h</p>
-            </div>
-            <div className="bg-gray-700/50 rounded-lg p-3">
-              <p className="text-xs text-gray-400 mb-1">Priority</p>
-              <p className="font-semibold">{course.priority}</p>
-            </div>
-            <div className="bg-gray-700/50 rounded-lg p-3">
-              <p className="text-xs text-gray-400 mb-1">Time Spent</p>
-              <p className="font-semibold">{Math.round(course.total_time_spent / 60)}h</p>
-            </div>
-            <div className="bg-gray-700/50 rounded-lg p-3">
-              <p className="text-xs text-gray-400 mb-1">Status</p>
-              <StatusBadge status={course.status} />
-            </div>
-          </div>
-
-          {/* Description */}
-          {course.description && (
-            <div>
-              <h3 className="font-semibold mb-2">Description</h3>
-              <p className="text-gray-400 text-sm">{course.description}</p>
-            </div>
-          )}
-
-          {/* Progress Update */}
-          <div>
-            <h3 className="font-semibold mb-3">Update Progress</h3>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-4">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={progress}
-                  onChange={(e) => setProgress(parseInt(e.target.value))}
-                  className="flex-1"
-                />
-                <span className="text-2xl font-bold text-blue-400 w-16">{progress}%</span>
-              </div>
-              <ProgressBar progress={progress} />
-              <button
-                onClick={handleUpdate}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg font-semibold transition-all duration-200"
-              >
-                Update Progress
-              </button>
-            </div>
-          </div>
+          <BrutalProgressBar progress={progress} />
+          <button
+            onClick={handleUpdate}
+            className="brutalism-button"
+            style={{ width: '100%', padding: '15px', marginTop: '15px', fontSize: '16px' }}
+          >
+            UPDATE PROGRESS
+          </button>
         </div>
       </div>
     </div>
@@ -914,48 +1217,33 @@ function CourseDetailModal({ course, onClose, onUpdate }) {
 }
 
 // Utility Components
-function StatCard({ title, value, subtitle, icon, color }) {
-  const colorClasses = {
-    blue: 'from-blue-600/20 to-blue-900/20 border-blue-500/30',
-    purple: 'from-purple-600/20 to-purple-900/20 border-purple-500/30',
-    green: 'from-green-600/20 to-green-900/20 border-green-500/30',
-    orange: 'from-orange-600/20 to-orange-900/20 border-orange-500/30'
-  };
-
+function StatCard({ title, value, subtitle }) {
   return (
-    <div className={`bg-gradient-to-br ${colorClasses[color]} backdrop-blur-sm rounded-xl p-6 border`}>
-      <div className="flex items-start justify-between mb-2">
-        <p className="text-gray-400 text-sm">{title}</p>
-        <span className="text-2xl">{icon}</span>
-      </div>
-      <p className="text-3xl font-bold mb-1">{value}</p>
-      <p className="text-gray-400 text-xs">{subtitle}</p>
+    <div className="brutal-card" style={{ boxShadow: '6px 6px 0px var(--dark-brown)', background: 'var(--white)' }}>
+      <p style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--brown)' }}>{title}</p>
+      <p style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '4px' }}>{value}</p>
+      <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--brown)' }}>{subtitle}</p>
     </div>
   );
 }
 
-function ProgressBar({ progress, size = 'md' }) {
-  const heights = { sm: 'h-1.5', md: 'h-2.5' };
-  
+function BrutalProgressBar({ progress }) {
   return (
-    <div className={`w-full bg-gray-700 rounded-full ${heights[size]} overflow-hidden`}>
-      <div 
-        className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-300"
-        style={{ width: `${progress}%` }}
-      />
+    <div className="brutal-progress">
+      <div className="brutal-progress-fill" style={{ width: `${progress}%` }} />
     </div>
   );
 }
 
 function StatusBadge({ status }) {
   const styles = {
-    'Not Started': 'bg-gray-600 text-gray-300',
-    'In Progress': 'bg-blue-600 text-blue-100',
-    'Completed': 'bg-green-600 text-green-100'
+    'Not Started': { background: 'var(--light-beige)', color: 'var(--brown)' },
+    'In Progress': { background: 'var(--brown)', color: 'var(--cream)' },
+    'Completed': { background: 'var(--dark-brown)', color: 'var(--cream)' }
   };
 
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${styles[status]}`}>
+    <span className="brutal-badge" style={styles[status]}>
       {status}
     </span>
   );
@@ -963,9 +1251,16 @@ function StatusBadge({ status }) {
 
 function PriorityBadge({ priority }) {
   return (
-    <span className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-bold ${
-      priority === 'MUST' ? 'bg-orange-500 text-white' : 'bg-gray-600 text-gray-300'
-    }`}>
+    <span 
+      className="brutal-badge"
+      style={{
+        position: 'absolute',
+        top: '10px',
+        left: '10px',
+        background: priority === 'MUST' ? 'var(--dark-brown)' : 'var(--beige)',
+        color: priority === 'MUST' ? 'var(--cream)' : 'var(--dark-brown)'
+      }}
+    >
       {priority}
     </span>
   );
